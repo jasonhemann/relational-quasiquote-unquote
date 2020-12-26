@@ -25,6 +25,20 @@ Type (debug) to enter the debugger.
 (unquote a b c)
 ```
 
+### Unquote through invalid syntax. 
+
+```
+> (quasiquote (quasiquote (unquote (quote (unquote . (+ 2 3))))))
+`,(quote #<procedure +> 2 3)
+
+> (quasiquote (quasiquote (unquote (quote (unquote . 9)))))
+`,'(unquote . 9)
+
+> (quasiquote (quasiquote (unquote (quote (unquote)))))
+`,(quote)
+
+```
+
 Note Racket's behavior differs in some subtle ways on these
 expressions.
 

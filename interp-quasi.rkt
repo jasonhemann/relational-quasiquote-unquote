@@ -1,6 +1,6 @@
 #lang racket
 (require minikanren)
-
+(require rackunit)
 #| 
 
 This file purports to be a relational interpreter for a language with
@@ -92,13 +92,50 @@ miniKanren workshop paper.
 ;; ambiguous grammars! Preventing these requires additionally
 ;; complicating this grammar's clauses. 
 
+x
+5
+()
+quasiquote
+unqoute
+quote
+(x . 5)
+(x . ())
+
+
 (define (eval-quasi expr env o)
   (conde
-    [(== expr '()) (== o '())]    
+    [(== expr '()) (== o '())]
     [(numbero expr) (== expr o)]
     [(symbolo expr)
      (== expr o)
      (=/= expr 'closure)]
+    ((fresh (a d)
+       (== expr `(,a . ,d))
+       (conde
+         ((=/= 'quasiquote a)
+          (=/= 'quote a)
+          (=/= 'unquote a)
+          (== o (cons v1 v2))
+          (eval-quasi a env v1)
+          (eval-quasi d env v2))
+         ((fresh (da dd)
+            (== d `(,da . ,dd))
+            (conde
+              ((== dd '()) 
+               (conde
+                 ((== 'unquote a)
+                  (evaluate da env o))
+                 ((fresh (res)
+                    (conde
+                      ((== 'quasiquote a))
+                      ((== 'quote a)))
+                    (== o (list a res))
+                    (eval-quasi a env res)))))
+              ((=/= dd '())
+               (== o (cons v1 v2))
+               (eval-quasi a env v1)
+               (eval-quasi d env v2)))))))))
+    
     [(fresh (a res)
        (== expr (list 'quote a))
        (== o (list 'quote res))
@@ -106,7 +143,7 @@ miniKanren workshop paper.
     [(fresh (a res)
        (== expr (list 'quasiquote a))
        (== o (list 'quasiquote res))
-       (eval-quasi a env res))]
+)]
     [(fresh (a)
        (== expr (list 'unquote a))
        (evaluate a env o))]
@@ -118,3 +155,42 @@ miniKanren workshop paper.
        (== o (cons v1 v2))
        (eval-quasi a env v1)
        (eval-quasi d env v2))]))
+
+
+
+#| 
+
+> (quasiquote             (unquote (quote (unquote (+ 2 3)))))
+,(+ 2 3)
+
+> (quasiquote      (quote (unquote (quote (unquote (+ 2 3))))))
+',(+ 2 3)
+
+> (quasiquote (quasiquote (unquote (quote (unquote (+ 2 3))))))
+`,'5
+
+> (quasiquote             (unquote (quote (unquote . (+ 2 3)))))
+(unquote + 2 3)
+
+> (quasiquote      (quote (unquote (quote (unquote . (+ 2 3))))))
+'(unquote + 2 3)
+
+> (quasiquote (quasiquote (unquote (quote (unquote . (+ 2 3))))))
+`,(quote #<procedure +> 2 3)
+
+> (quasiquote (quasiquote (unquote (quote (unquote . 9)))))
+`,'(unquote . 9)
+
+> (quasiquote (quasiquote (unquote (quote (unquote)))))
+`,(quote)
+
+> (quasiquote (quasiquote (unquote (quote (unquote 8 9 10 11) b c d))))
+`,(quote 8 9 10 11 b c d)
+
+(let ((a 'foo) (b 'bar))
+    `(let ((z 'mat))
+       `(,',b (lambda (,z) body))))
+
+|# 
+
+
