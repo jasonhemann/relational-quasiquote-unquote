@@ -92,7 +92,7 @@ In addition to Chez Scheme itself as a reference implementation, we
  - Fare's [Portable quasiquote for Common
    Lisp](https://github.com/fare/fare-quasiquote)
  - Dybvig's [early old quasiquote
-   implementation](https://groups.csail.mit.edu/mac/ftpdir/scheme-mail/HTML/rrrs-1986/msg00000.html)
+   implementation](https://groups.csail.mit.edu/mac/ftpdir/scheme-mail/HTML/rrrs-1986/msg00002.html)
    email thread. 
  - Chez's [current definition of
    quasiquote](https://github.com/cisco/ChezScheme/blob/master/s/syntax.ss#L7642)
