@@ -24,35 +24,44 @@
 
 (define (qq-expand expr depth)
   (match expr
+    ;; Finally, because we here want to produce the quoted version of this input.
+    [`,p #:when (not (pair? p)) `',p]
     [(cons a d)
      (match a
-       ['unquote
-        (match d
-          [(cons p '())
+       [`,a #:when (not (cons? a))
+            (match a
+              ['unquote
+               (match d
+                 [`,d #:when (not (pair? d)) (quasicons (qq-expand a depth) (qq-expand d depth))]
+                 [(cons p '())
+                  (cond
+                    [(zero? depth) p]
+                    [(positive? depth) (quasicons ''unquote (qq-expand p (sub1 depth)))])]
+                 [(cons p n) #:when (not (eqv? n '())) (quasicons (qq-expand a depth) (qq-expand d depth))])]
+              ['quasiquote
+               (match d
+                 [(cons p '()) (quasicons ''quasiquote (qq-expand p (add1 depth)))]
+                 [(cons p n) #:when (not (eqv? n '())) (quasicons (qq-expand a depth) (qq-expand d depth))]
+                 [`,d #:when (not (pair? d)) (quasicons (qq-expand a depth) (qq-expand d depth))])]
+              [`,a #:when (and (not (eqv? a 'unquote))
+                               (not (eqv? a 'quasiquote)))
+                   (quasicons (qq-expand a depth) (qq-expand d depth))])]
+       [(cons aa da)
+        (match aa
+          ['unquote 
            (cond
-             [(zero? depth) p]
-             [else (quasicons ''unquote (qq-expand p (sub1 depth)))])]
-          [else (quasicons (qq-expand a depth) (qq-expand d depth))])]
-       ['quasiquote
-        (match d
-          [(cons p '()) (quasicons ''quasiquote (qq-expand p (add1 depth)))]
-          [else (quasicons (qq-expand a depth) (qq-expand d depth))])]
-       [(cons 'unquote da)
-        (cond
-          [(list? da) ;; must check b/c da might be an improper list
-           (cond
-             [(zero? depth) (quasilist* da (qq-expand d depth))]
-             [else
-              (quasicons
-               (quasicons ''unquote (qq-expand da (sub1 depth)))
-               (qq-expand d depth))])]
-          ;; In the improper list case we fall through to
-          ;; a duplicate of the else case from the surrounding
-          ;; match expression
-          [else (quasicons (qq-expand a depth) (qq-expand d depth))])]
-       [else (quasicons (qq-expand a depth) (qq-expand d depth))])]
-    ;; Finally, because we here want to produce the quoted version of this input.
-    [`,p `',p]))
+             [(list? da) ;; must check b/c da might be an improper list
+              (cond
+                [(zero? depth) (quasilist* da (qq-expand d depth))]
+                [(positive? depth)
+                 (quasicons
+                  (quasicons ''unquote (qq-expand da (sub1 depth)))
+                  (qq-expand d depth))])]
+             ;; In the improper list case we fall through to
+             ;; a duplicate of the else case from the surrounding
+             ;; match expression
+             [(not (list? da)) (quasicons (qq-expand a depth) (qq-expand d depth))])]
+          [aa #:when (not (eqv? 'unquote aa)) (quasicons (qq-expand a depth) (qq-expand d depth))])])]))
 
 (define (apply-env env y)
   (cdr (assv y env)))
