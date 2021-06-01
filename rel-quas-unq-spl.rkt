@@ -29,7 +29,7 @@
         (list 'quote (cons dx dy))]
        [_ (if (null? dy)
               (list 'list x)
-              (list 'list x y))])]
+              (list 'list* x y))])]
     [(cons 'list stuff) (cons 'list (cons x stuff))]
     [(cons 'list* stuff) (cons 'list* (cons x stuff))]
     [_ (list 'list* x y)]))
@@ -170,7 +170,6 @@
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `,(qq-expand '(1 (unquote-splicing '(5) . 10) . 3) 0)])
   ;; ... namely,
-  (printf "does this look right ~s~n" val)
   (check-expect
    (eval val ns)
    '(1 (unquote-splicing '(5) . 10) . 3)))
