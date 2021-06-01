@@ -31,6 +31,7 @@
        [_ (if (null? dy)
               (list 'list x)
               (list 'list* x y))])]
+    ;; This is where we would add the missing list* enhancement
     [(cons 'list stuff) (cons 'list (cons x stuff))]
     [(cons 'list* stuff) (cons 'list* (cons x stuff))]
     [_ (list 'list* x y)]))
@@ -93,12 +94,9 @@
     [`(append . ,args) (apply append (map (lambda (e) (qq-eval e env)) args))]
     [`(list* . ,args) (apply list* (map (lambda (e) (qq-eval e env)) args))]
     [`(list . ,args) (apply list (map (lambda (e) (qq-eval e env)) args))]
-    [(list 'quote arg) (begin (printf " got-here") arg)]
-    ;; [(cons 'quasiquote args) ]
-    ;; [(cons 'unquote args) ]
-    ;; [(cons 'unquote-splicing . args) ]
+    [(list 'quote arg) arg]
     [(cons a d) #:when (or (not (pair? a)) (not (memv (car a) (list 'quote 'quasiquote 'unquote 'unquote-splicing))))
-                (qq-eval a env) (qq-eval d env)]))
+                (apply (qq-eval a env) (map (lambda (e) (qq-eval e env)) d))]))
 
 (define ns (make-base-namespace))
 (namespace-attach-module (current-namespace) 'racket ns)
@@ -109,6 +107,7 @@
 (let ([val `(let ((x 5) (y 7))
               ,(qq-expand '(a (unquote x y) b) 0))])
   ;; ... namely,
+  (pretty-print val)  
   (check-expect 
    (eval val ns)
    '(a 5 7 b)))
@@ -120,6 +119,7 @@
 (let ([val `(let ((x 5))
               ,(qq-expand '(unquote . x) 0))])
   ;; ... namely, 
+  (pretty-print val)
   (check-expect
    (eval val ns)
    '(unquote . x)))
@@ -131,6 +131,7 @@
 (let ([val `(let ((x 5))
               ,(qq-expand '(unquote-splicing . x) 0))])
   ;; ... namely, 
+  (pretty-print val)
   (check-expect
    (eval val ns)
    '(unquote-splicing . x)))
@@ -141,6 +142,7 @@
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `,(qq-expand '(1 2 . (unquote (make-list 5 'b) 10)) 0)])
   ;; ... namely, 
+  (pretty-print val)
   (check-expect
    (eval val ns)
    '(1 2 unquote (make-list 5 'b) 10)))
@@ -150,6 +152,7 @@
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `,(qq-expand '(1 2 . (unquote-splicing (make-list 5 'b) 10)) 0)])
   ;; ... namely, 
+  (pretty-print val)
   (check-expect
    (eval val ns)
    '(1 2 unquote-splicing (make-list 5 'b) 10)))
@@ -159,6 +162,7 @@
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `,(qq-expand '(1 2 (unquote-splicing (make-list 5 'b) 10)) 0)])
   ;; ... namely, 
+  (pretty-print val)
   (check-expect
    (eval val ns)
    '(1 2 b b b b b . 10)))
@@ -168,6 +172,7 @@
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `,(qq-expand '(1 (unquote-splicing 5 . 10) 3) 0)])
   ;; ... namely, 
+  (pretty-print val)
   (check-expect
    (eval val ns)
    '(1 (unquote-splicing 5 . 10) 3)))
@@ -177,6 +182,7 @@
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `,(qq-expand '(1 (unquote-splicing '(5) . 10) . 3) 0)])
   ;; ... namely,
+  (pretty-print val)
   (check-expect
    (eval val ns)
    '(1 (unquote-splicing '(5) . 10) . 3)))
@@ -187,6 +193,7 @@
 (let ([val `(let ((t '(7)))
               ,(qq-expand '((unquote-splicing t) b) 0))])
   ;; ... namely, 
+  (pretty-print val)
   (check-expect
    (eval val ns)
    '(7 b)))
@@ -198,6 +205,7 @@
 (let ([val `(let ((x '(5 6)) (y '(7 8)))
               ,(qq-expand '(a (unquote-splicing x y) b) 0))])
   ;; ... namely, 
+  (pretty-print val)
   (check-expect
    (eval val ns)
    '(a 5 6 7 8 b)))
@@ -211,4 +219,46 @@
 ;; > `(1 (unquote-splicing 5 10))
 ;; Exception in append: 5 is not a proper list
 
+;; These examples test our evaluator. They demonstrate that using our evaluator to evaluate the output of our
+;; expander returns the correct answer.
+
+(check-expect
+ (qq-eval '(list* 'a x y '(b)) '((x . 5) (y . 7)))
+ '(a 5 7 b))
+
+(check-expect
+ (qq-eval ''(unquote . x) '((x . 5)))
+ '(unquote . x))
+
+(check-expect
+ (qq-eval ''(unquote-splicing . x) '((x . 5)))
+ '(unquote-splicing . x))
+
+(check-expect
+ (qq-eval ''(1 2 unquote (make-list 5 'b) 10) '())
+ '(1 2 unquote (make-list 5 'b) 10))
+
+(check-expect
+ (qq-eval ''(1 2 unquote-splicing (make-list 5 'b) 10) '())
+ '(1 2 unquote-splicing (make-list 5 'b) 10))
+
+(check-expect
+ (qq-eval '(list* '1 '2 (append (make-list 5 'b) 10)) `((make-list . ,make-list)))
+ '(1 2 b b b b b . 10))
+
+(check-expect
+ (qq-eval ''(1 (unquote-splicing 5 . 10) 3) '())
+ '(1 (unquote-splicing 5 . 10) 3))
+
+(check-expect
+ (qq-eval ''(1 (unquote-splicing '(5) . 10) . 3) '())
+ '(1 (unquote-splicing '(5) . 10) . 3))
+
+(check-expect
+ (qq-eval '(append t '(b)) '((t . (7))))
+ '(7 b))
+     
+(check-expect
+ (qq-eval '(list* 'a (append x y '(b))) '((x . (5 6)) (y . (7 8))))
+ '(a 5 6 7 8 b))
 
