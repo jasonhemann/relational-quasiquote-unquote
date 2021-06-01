@@ -13,13 +13,14 @@
         (if (list? ls)
             `(append . ,ls)
             (error 'quasiappend "reached a point where we should have had a list"))])]
-    [_
+    [`,y #:when (list? y)
      (match x
        ['() (list 'quote '())]
        [`,ls
         (if (list? ls)
-            `(append . ,(append ls y))
-            (error 'quasiappend "reached a point where we should have had a list"))])]))
+            `(append ,@ls ,y)
+            (error 'quasiappend "reached a point where we should have had a list"))])]
+    [_ (error 'quasiappend "reached a point where we should have had a list")]))
 
 (define (quasicons x y)
   (match y
@@ -80,6 +81,25 @@
     ;; Finally, because we here want to produce the quoted version of this input.
     [`,p `',p]))
 
+(define (apply-env env y)
+  (cdr (assv y env)))
+
+;; Beginnings of an evaluator *for* these languages
+(define (qq-eval expr env)
+  (match expr
+    [`,y #:when (symbol? y) (apply-env env y)]
+    [`,n #:when (number? n) n]
+    [`() `()]
+    [`(append . ,args) (apply append (map (lambda (e) (qq-eval e env)) args))]
+    [`(list* . ,args) (apply list* (map (lambda (e) (qq-eval e env)) args))]
+    [`(list . ,args) (apply list (map (lambda (e) (qq-eval e env)) args))]
+    [(list 'quote arg) (begin (printf " got-here") arg)]
+    ;; [(cons 'quasiquote args) ]
+    ;; [(cons 'unquote args) ]
+    ;; [(cons 'unquote-splicing . args) ]
+    [(cons a d) #:when (or (not (pair? a)) (not (memv (car a) (list 'quote 'quasiquote 'unquote 'unquote-splicing))))
+                (qq-eval a env) (qq-eval d env)]))
+
 (define ns (make-base-namespace))
 (namespace-attach-module (current-namespace) 'racket ns)
 (namespace-require 'racket ns)
@@ -113,7 +133,7 @@
   ;; ... namely, 
   (check-expect
    (eval val ns)
-   '(unquote-splicing . x))  )
+   '(unquote-splicing . x)))
 ;; ... is the same as evaluating, in Chez, this expression ...
 '(let ((x 5))
    `(unquote-splicing . x))
@@ -127,7 +147,6 @@
 ;; ... is the same as evaluating, in Chez, this expression ...
 '`(1 2 . (unquote (make-list 5 'b) 10))
 
-
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `,(qq-expand '(1 2 . (unquote-splicing (make-list 5 'b) 10)) 0)])
   ;; ... namely, 
@@ -137,7 +156,6 @@
 ;; ... is the same as evaluating, in Chez, this expression ...
 '`(1 2 . (unquote-splicing (make-list 5 'b) 10))
 
-
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `,(qq-expand '(1 2 (unquote-splicing (make-list 5 'b) 10)) 0)])
   ;; ... namely, 
@@ -146,17 +164,6 @@
    '(1 2 b b b b b . 10)))
 ;; ... is the same as evaluating, in Chez, this expression ...
 '`(1 2 (unquote-splicing (make-list 5 'b) 10))
-
-'(The following tests fail)
-
-;; Evaluating, in Racket, the value of expression ...
-`(let ((x '(5 6)) (y '(7 8)))
-   ,(qq-expand '(a (unquote-splicing x y) b) 0))
-;; ... is the same as evaluating, in Chez, this expression ...
-'(let ((x '(5 6)) (y '(7 8)))
-   `(a (unquote-splicing x y) b))
-;; ... namely, 
-'(a 5 6 7 8 b)
 
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `,(qq-expand '(1 (unquote-splicing 5 . 10) 3) 0)])
@@ -176,6 +183,27 @@
 ;; ... is the same as evaluating, in Chez, this expression ...
 '`(1 (unquote-splicing '(5) . 10) . 3)
 
+;; Evaluating, in Racket, the value of expression ...
+(let ([val `(let ((t '(7)))
+              ,(qq-expand '((unquote-splicing t) b) 0))])
+  ;; ... namely, 
+  (check-expect
+   (eval val ns)
+   '(7 b)))
+;; ... is the same as evaluating, in Chez, this expression ...
+'(let ((t '(7)))
+   `((unquote-splicing t) b))
+
+;; Evaluating, in Racket, the value of expression ...
+(let ([val `(let ((x '(5 6)) (y '(7 8)))
+              ,(qq-expand '(a (unquote-splicing x y) b) 0))])
+  ;; ... namely, 
+  (check-expect
+   (eval val ns)
+   '(a 5 6 7 8 b)))
+;; ... is the same as evaluating, in Chez, this expression ...
+'(let ((x '(5 6)) (y '(7 8)))
+   `(a (unquote-splicing x y) b))
 
 ;; Non-examples (Chez doesn't like, programs our expander should reject)
 ;; > `(1 (unquote-splicing 5 10) 3)
