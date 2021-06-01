@@ -24,14 +24,19 @@
 
 (define (qq-expand expr depth)
   (match expr
-    [(list 'unquote p)
-     (cond
-       [(zero? depth) p]
-       [else (quasicons ''unquote (qq-expand p (sub1 depth)))])]
-    [(list 'quasiquote p)
-     (quasicons ''quasiquote (qq-expand p (add1 depth)))]
     [(cons a d)
      (match a
+       ['unquote
+        (match d
+          [(cons p '())
+           (cond
+             [(zero? depth) p]
+             [else (quasicons ''unquote (qq-expand p (sub1 depth)))])]
+          [else (quasicons (qq-expand a depth) (qq-expand d depth))])]
+       ['quasiquote
+        (match d
+          [(cons p '()) (quasicons ''quasiquote (qq-expand p (add1 depth)))]
+          [else (quasicons (qq-expand a depth) (qq-expand d depth))])]
        [(cons 'unquote da)
         (cond
           [(list? da) ;; must check b/c da might be an improper list
