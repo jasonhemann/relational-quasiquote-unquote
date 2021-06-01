@@ -18,9 +18,9 @@
     [_ (list 'list* x y)]))
 
 (define (quasilist* x y)
-  (cond
-    [(null? x) y]
-    [else (quasicons (car x) (quasilist* (cdr x) y))]))
+  (match x
+    ['() y]
+    [`(,a . ,d) (quasicons a (quasilist* d y))]))
 
 (define (qq-expand expr depth)
   (match expr
