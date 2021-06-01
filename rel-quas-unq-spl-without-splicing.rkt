@@ -33,16 +33,20 @@
               ['unquote
                (match d
                  [`,d #:when (not (pair? d)) (quasicons (qq-expand a depth) (qq-expand d depth))]
-                 [(cons p '())
-                  (cond
-                    [(zero? depth) p]
-                    [(positive? depth) (quasicons ''unquote (qq-expand p (sub1 depth)))])]
-                 [(cons p n) #:when (not (eqv? n '())) (quasicons (qq-expand a depth) (qq-expand d depth))])]
+                 [(cons p n)
+                  (match n
+                    ['()
+                     (cond
+                       [(zero? depth) p]
+                       [(positive? depth) (quasicons ''unquote (qq-expand p (sub1 depth)))])]
+                    [n #:when (not (eqv? n '())) (quasicons (qq-expand a depth) (qq-expand d depth))])])]
               ['quasiquote
                (match d
-                 [(cons p '()) (quasicons ''quasiquote (qq-expand p (add1 depth)))]
-                 [(cons p n) #:when (not (eqv? n '())) (quasicons (qq-expand a depth) (qq-expand d depth))]
-                 [`,d #:when (not (pair? d)) (quasicons (qq-expand a depth) (qq-expand d depth))])]
+                 [`,d #:when (not (pair? d)) (quasicons (qq-expand a depth) (qq-expand d depth))]
+                 [(cons p n)
+                  (match n
+                    ['() (quasicons ''quasiquote (qq-expand p (add1 depth)))]
+                    [n #:when (not (eqv? n '())) (quasicons (qq-expand a depth) (qq-expand d depth))])])]
               [`,a #:when (and (not (eqv? a 'unquote))
                                (not (eqv? a 'quasiquote)))
                    (quasicons (qq-expand a depth) (qq-expand d depth))])]
