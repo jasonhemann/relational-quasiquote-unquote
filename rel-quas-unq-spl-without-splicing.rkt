@@ -29,42 +29,47 @@
     [(cons a d)
      (match a
        [`,a #:when (not (cons? a))
-            (match a
-              ['unquote
-               (match d
-                 [`,d #:when (not (pair? d)) (quasicons (qq-expand a depth) (qq-expand d depth))]
-                 [(cons p n)
-                  (match n
-                    ['()
-                     (cond
-                       [(zero? depth) p]
-                       [(positive? depth) (quasicons ''unquote (qq-expand p (sub1 depth)))])]
-                    [n #:when (not (eqv? n '())) (quasicons (qq-expand a depth) (qq-expand d depth))])])]
-              ['quasiquote
-               (match d
-                 [`,d #:when (not (pair? d)) (quasicons (qq-expand a depth) (qq-expand d depth))]
-                 [(cons p n)
-                  (match n
-                    ['() (quasicons ''quasiquote (qq-expand p (add1 depth)))]
-                    [n #:when (not (eqv? n '())) (quasicons (qq-expand a depth) (qq-expand d depth))])])]
-              [`,a #:when (and (not (eqv? a 'unquote))
-                               (not (eqv? a 'quasiquote)))
-                   (quasicons (qq-expand a depth) (qq-expand d depth))])]
+        (match a
+          ['unquote
+           (match d
+             [`,d #:when (not (pair? d)) (quasicons (qq-expand a depth) (qq-expand d depth))]
+             [(cons p n)
+              (match n
+                ['()
+                 (cond
+                   [(zero? depth) p]
+                   [(positive? depth) (quasicons ''unquote (qq-expand p (sub1 depth)))])]
+                [n #:when (not (eqv? n '())) (quasicons (qq-expand a depth) (qq-expand d depth))])])]
+          ['quasiquote
+           (match d
+             [`,d #:when (not (pair? d)) (quasicons (qq-expand a depth) (qq-expand d depth))]
+             [(cons p n)
+              (match n
+                ['() (quasicons ''quasiquote (qq-expand p (add1 depth)))]
+                [n #:when (not (eqv? n '())) (quasicons (qq-expand a depth) (qq-expand d depth))])])]
+          [`,a #:when (and (not (eqv? a 'unquote)) (not (eqv? a 'quasiquote)))
+           (quasicons (qq-expand a depth) (qq-expand d depth))])]
        [(cons aa da)
         (match aa
           ['unquote 
            (cond
-             [(list? da) ;; must check b/c da might be an improper list
+             [(zero? depth)
               (cond
-                [(zero? depth) (quasilist* da (qq-expand d depth))]
-                [(positive? depth)
+                [(list? da) (quasilist* da (qq-expand d depth))] ;; the list? will vanish b/c quasilist handles
+                [(not (list? da))
+                 (quasicons
+                  (qq-expand (cons aa da) depth)
+                  (qq-expand d depth))])]
+             [(positive? depth)
+              (cond
+                [(list? da) ;; must check b/c must force da to be a proper list
                  (quasicons
                   (quasicons ''unquote (qq-expand da (sub1 depth)))
-                  (qq-expand d depth))])]
-             ;; In the improper list case we fall through to
-             ;; a duplicate of the else case from the surrounding
-             ;; match expression
-             [(not (list? da)) (quasicons (qq-expand a depth) (qq-expand d depth))])]
+                  (qq-expand d depth))]
+                ;; In the improper list case we fall through to
+                ;; a duplicate of the else case from the surrounding
+                ;; match expression
+                [(not (list? da)) (quasicons (qq-expand a depth) (qq-expand d depth))])])]
           [aa #:when (not (eqv? 'unquote aa)) (quasicons (qq-expand a depth) (qq-expand d depth))])])]))
 
 (define (apply-env env y)
