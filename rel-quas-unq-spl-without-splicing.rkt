@@ -91,14 +91,6 @@
 (namespace-require 'racket/base)
 (eval '(require racket racket/list))
 
-;; (define ns (make-base-namespace))
-;; (eval '(require racket racket/list) ns)
-;; (namespace-attach-module (current-namespace) 'racket ns)
-;; (namespace-attach-module (current-namespace) 'racket/draw ns)
-;; (namespace-require 'racket ns)
-;; (namespace-require 'racket/list ns)
-;; (namespace-require 'racket/draw ns)
-
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `(let ((x 5) (y 7))
               ,(qq-expand '(a (unquote x y) b) 0))])
