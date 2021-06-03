@@ -88,10 +88,16 @@
     [(cons a d) #:when (or (not (pair? a)) (not (memv (car a) (list 'quote 'quasiquote 'unquote 'unquote-splicing))))
                 (apply (qq-eval a env) (map (lambda (e) (qq-eval e env)) d))]))
 
-(define ns (make-base-namespace))
-(namespace-attach-module (current-namespace) 'racket ns)
-(namespace-require 'racket ns)
-(namespace-require 'racket/list ns)
+(namespace-require 'racket/base)
+(eval '(require racket racket/list))
+
+;; (define ns (make-base-namespace))
+;; (eval '(require racket racket/list) ns)
+;; (namespace-attach-module (current-namespace) 'racket ns)
+;; (namespace-attach-module (current-namespace) 'racket/draw ns)
+;; (namespace-require 'racket ns)
+;; (namespace-require 'racket/list ns)
+;; (namespace-require 'racket/draw ns)
 
 ;; Evaluating, in Racket, the value of expression ...
 (let ([val `(let ((x 5) (y 7))
@@ -99,7 +105,7 @@
   ;; ... namely,
   (pretty-print val)  
   (check-expect 
-   (eval val ns)
+   (eval val)
    '(a 5 7 b)))
 ;; ... is the same as evaluating, in Chez, this expression ...
 '(let ((x 5) (y 7))
@@ -111,7 +117,7 @@
   ;; ... namely, 
   (pretty-print val)
   (check-expect
-   (eval val ns)
+   (eval val)
    '(unquote . x)))
 ;; ... is the same as evaluating, in Chez, this expression ...
 '(let ((x 5))
@@ -122,7 +128,7 @@
   ;; ... namely, 
   (pretty-print val)
   (check-expect
-   (eval val ns)
+   (eval val)
    '(1 2 unquote (make-list 5 'b) 10)))
 ;; ... is the same as evaluating, in Chez, this expression ...
 '`(1 2 . (unquote (make-list 5 'b) 10))
