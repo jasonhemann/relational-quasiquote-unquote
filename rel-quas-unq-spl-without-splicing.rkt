@@ -5,17 +5,23 @@
 
 (define (quasicons x y)
   (match y
-    [(list 'quote dy)
-     (match x
-       [(list 'quote dx)
-        (list 'quote (cons dx dy))]
-       [_ (if (null? dy)
-              (list 'list x)
-              (list 'list* x y))])]
-    ;; This is where we would add the missing list* enhancement
-    [(cons 'list stuff) (cons 'list (cons x stuff))]
-    [(cons 'list* stuff) (cons 'list* (cons x stuff))]
-    [_ (list 'list* x y)]))
+    [y #:when (not (cons? y)) (list 'list* x y)]
+    [(cons a rest)
+     (match a
+       ['quote
+        (match rest
+          [(list dy)
+           (match x
+             [(list 'quote dx)
+              (list 'quote (cons dx dy))]
+             [_ (if (null? dy)
+                    (list 'list x)
+                    (list 'list* x y))])]
+          [_ (list 'list* x y)])]
+       ['list (cons 'list (cons x rest))]
+       ['list*  (cons 'list* (cons x rest))]
+       [a #:when (not (memv a '(quote list list*)))
+          (list 'list* x y)])]))
 
 (define (quasilist* x y)
   (match x
